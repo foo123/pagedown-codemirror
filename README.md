@@ -1,7 +1,9 @@
-PageDown ACE
-============
+PageDown CodeMirror
+===================
 
-**PageDown ACE** is a port of [PageDown](https://code.google.com/p/pagedown/wiki/PageDown) running with [ACE editor](http://ace.c9.io/) instead of a `textarea`.
+**in progress**
+
+**PageDown CodeMirror** is a port of [PageDown](https://code.google.com/p/pagedown/wiki/PageDown) running with [CodeMirror editor](https://codemirror.net/) instead of a `textarea`.
 
 Basically:
 
@@ -11,14 +13,12 @@ Basically:
     <script type="text/javascript">
         var converter = new Markdown.Converter();
         var editor = new Markdown.Editor(converter);
-        var ace = ace.edit("wmd-input");
-        editor.run(ace);
+        var cm = CodeMirror.fromTextArea(document.getElementById("wmd-input"),{});
+        editor.run(cm);
     </script>
 ```
 
 The [demo page][1] has been updated accordingly.
 
-> Written with [StackEdit](http://benweet.github.io/stackedit/).
 
-
-  [1]: https://github.com/benweet/pagedown-ace/blob/master/demo/browser/demo.html
+  [1]: https://github.com/foo123/pagedown-codemirror/blob/master/demo/browser/demo.html
