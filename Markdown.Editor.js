@@ -15,7 +15,8 @@
         uaSniffed = {
             isIE: /msie/.test(nav.userAgent.toLowerCase()),
             isIE_5or6: /msie 6/.test(nav.userAgent.toLowerCase()) || /msie 5/.test(nav.userAgent.toLowerCase()),
-            isOpera: /opera/.test(nav.userAgent.toLowerCase())
+            isOpera: /opera/.test(nav.userAgent.toLowerCase()),
+            isMac: (/AppleWebKit/.test(nav.userAgent) && /Mobile\/\w+/.test(nav.userAgent)) || /Mac/.test(nav.platform)
         };
 
     var defaultsStrings = {
@@ -200,11 +201,8 @@
             }
             */
 
-            var isMac = (/AppleWebKit/.test(navigator.userAgent) && /Mobile\/\w+/.test(navigator.userAgent)) || /Mac/.test(navigator.platform);
             var getKey = function (identifier) {
-                var keyStroke = keyStrokes[identifier][isMac ? "mac" : "win"];
-                var orIndex = keyStroke.indexOf('|');
-                return keyStroke.substring(0, orIndex > 0 ? orIndex : keyStroke.length);
+                return keyStrokes[identifier][uaSniffed.isMac ? "mac" : "win"].split('|').join(' ');
             };
             uiManager = new UIManager(idPostfix, panels, undoManager, previewManager, commandManager, options.helpButton, getString, getKey);
             uiManager.setUndoRedoButtonStates();
@@ -785,7 +783,7 @@
             */
 
             (function() {
-                stateObj.before = inputArea.doc.getRange({line:0,ch:0},inputArea.doc.getCursor("from"));
+                stateObj.before = inputArea.doc.getRange(CodeMirror.Pos(0,0),inputArea.doc.getCursor("from"));
                 stateObj.selection = inputArea.doc.getSelection();
                 stateObj.after = inputArea.doc.getRange(inputArea.doc.getCursor("to"),inputArea.doc.posFromIndex(Number.MAX_VALUE));
             })();
@@ -912,10 +910,10 @@
                 endIndex++;
             }
             
-            inputArea.doc.replaceRange(stateObj.text.substring(startIndex, afterMaxOffset - endIndex + 1), {
-                from:inputArea.doc.posFromIndex(startIndex),
-                to:inputArea.doc.posFromIndex(stateObj.length - endIndex)
-            });
+            inputArea.doc.replaceRange(stateObj.text.substring(startIndex, afterMaxOffset - endIndex + 1),
+                inputArea.doc.posFromIndex(startIndex),
+                inputArea.doc.posFromIndex(stateObj.length - endIndex)
+            );
             this.setInputAreaSelection();
 
             /*benweet
@@ -1003,7 +1001,7 @@
                 return;
 
 
-            var text = panels.input.getValue();
+            var text = panels.input.doc.getValue();
             if (text && text == oldInputText) {
                 return; // Input text hasn't changed.
             }
@@ -1115,7 +1113,7 @@
 
         var pushPreviewHtml = function (text) {
 
-            var emptyTop = position.getTop(panels.input) - getDocScrollTop();
+            var emptyTop = position.getTop(panels.input.doc) - getDocScrollTop();
 
             if (panels.preview) {
                 previewSet(text);
@@ -1129,7 +1127,7 @@
                 return;
             }
 
-            var fullTop = position.getTop(panels.input) - getDocScrollTop();
+            var fullTop = position.getTop(panels.input.doc) - getDocScrollTop();
 
             if (uaSniffed.isIE) {
                 setTimeout(function () {
@@ -1363,8 +1361,8 @@
 
         this.setUndoRedoButtonStates = function() {
             setTimeout(function() {
-                setupButton(buttons.undo, true);
-                setupButton(buttons.redo, true);
+                setupButton(buttons.undo, inputBox.doc.history.done.length > 0);
+                setupButton(buttons.redo, inputBox.doc.history.undone.length > 0);
             }, 50);
         };
 
@@ -1384,11 +1382,11 @@
             for(var i=identifierList.length-1; i>=0; i--)
             {
                 var identifier = identifierList[i];
-                eKeys[keyStrokes[identifier]] = (function(bt){
-                    return function(editor) { doClick(bt); };
-                })(buttons[identifier]);
+                eKeys[getKey(identifier)] = (function(identifier){
+                    return function(editor) { doClick(buttons[identifier]); };
+                })(identifier);
             }
-            inputBox.setOption("extraKeys", eKeys);
+            inputBox.addKeyMap(eKeys);
         };
         addKeyCmd(['bold', 'italic', 'link', 'quote', 'code', 'image', 'olist', 'ulist', 'heading', 'hr']);
         
@@ -1578,11 +1576,11 @@
                 // on mousedown.
                 if (uaSniffed.isIE) {
                     button.onmousedown = function () {
-                        if (doc.activeElement && doc.activeElement !== panels.input) { // we're not even in the input box, so there's no selection
+                        if (doc.activeElement && doc.activeElement !== panels.input.doc) { // we're not even in the input box, so there's no selection
                             return;
                         }
                         panels.ieCachedRange = document.selection.createRange();
-                        panels.ieCachedScrollTop = panels.input.renderer.getScrollTop();
+                        panels.ieCachedScrollTop = panels.input.doc.scrollTop||0;
                     };
                 }
 

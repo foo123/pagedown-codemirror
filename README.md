@@ -1,8 +1,6 @@
 PageDown CodeMirror
 ===================
 
-**in progress**
-
 **PageDown CodeMirror** is a port of [PageDown](https://code.google.com/p/pagedown/wiki/PageDown) running with [CodeMirror editor](https://codemirror.net/) instead of a (plain) `textarea`.
 
 Basically:
@@ -13,7 +11,7 @@ Basically:
     <script type="text/javascript">
         var converter = new Markdown.Converter();
         var editor = new Markdown.Editor(converter);
-        var cm = CodeMirror(document.getElementById("wmd-input"),{value:"some text",lineNumber:true});
+        var cm = CodeMirror(document.getElementById("wmd-input"),{value:"some text",lineNumbers:true});
         editor.run(cm);
     </script>
 ```
