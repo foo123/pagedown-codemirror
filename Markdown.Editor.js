@@ -176,11 +176,11 @@
             panels;
 
         var undoManager;
-        this.run = function (aceEditor, previewWrapper) {
+        this.run = function (cm, previewWrapper) {
             if (panels)
                 return; // already initialized
 
-            panels = new PanelCollection(idPostfix, aceEditor);
+            panels = new PanelCollection(idPostfix, cm);
             var commandManager = new CommandManager(hooks, getString);
             var previewManager = new PreviewManager(markdownConverter, panels, function () { hooks.onPreviewRefresh(); }, previewWrapper);
             var uiManager;
@@ -200,9 +200,9 @@
             }
             */
 
-            var useragent = typeof require !== 'undefined' ? require('ace/lib/useragent') : ace.require('ace/lib/useragent');
+            var isMac = (/AppleWebKit/.test(navigator.userAgent) && /Mobile\/\w+/.test(navigator.userAgent)) || /Mac/.test(navigator.platform);
             var getKey = function (identifier) {
-                var keyStroke = keyStrokes[identifier][useragent.isMac ? "mac" : "win"];
+                var keyStroke = keyStrokes[identifier][isMac ? "mac" : "win"];
                 var orIndex = keyStroke.indexOf('|');
                 return keyStroke.substring(0, orIndex > 0 ? orIndex : keyStroke.length);
             };
@@ -365,10 +365,10 @@
     // This ONLY affects Internet Explorer (tested on versions 6, 7
     // and 8) and ONLY on button clicks.  Keyboard shortcuts work
     // normally since the focus never leaves the textarea.
-    function PanelCollection(postfix, aceEditor) {
+    function PanelCollection(postfix, cm) {
         this.buttonBar = doc.getElementById("wmd-button-bar" + postfix);
         this.preview = doc.getElementById("wmd-preview" + postfix);
-        this.input = aceEditor;
+        this.input = cm;
     };
 
     // Returns true if the DOM element is visible, false if it's hidden.
@@ -784,16 +784,15 @@
             }
             */
 
-            var Range = typeof require !== 'undefined' ? require('ace/range').Range : ace.require('ace/range').Range;
-            (function(range) {
-                stateObj.before = inputArea.session.getTextRange(new Range(0,0,range.start.row, range.start.column));
-                stateObj.selection = inputArea.session.getTextRange();
-                stateObj.after = inputArea.session.getTextRange(new Range(range.end.row, range.end.column, Number.MAX_VALUE, Number.MAX_VALUE));
-            })(inputArea.selection.getRange());
+            (function() {
+                stateObj.before = inputArea.doc.getRange({line:0,ch:0},inputArea.doc.getCursor("from"));
+                stateObj.selection = inputArea.doc.getSelection();
+                stateObj.after = inputArea.doc.getRange(inputArea.doc.getCursor("to"),inputArea.doc.posFromIndex(Number.MAX_VALUE));
+            })();
             this.text = [this.before, this.selection, this.after].join('');
             this.length = this.text.length;
             this.setInputAreaSelectionStartEnd();
-            this.scrollTop = inputArea.renderer.getScrollTop();
+            this.scrollTop = inputArea.doc.scrollTop || 0;
             /*benweet
             if (!this.text && inputArea.selectionStart || inputArea.selectionStart === 0) {
                 this.text = inputArea.value;
@@ -805,11 +804,7 @@
         // operation.
         this.setInputAreaSelection = function () {
 
-            var Range = typeof require !== 'undefined' ? require('ace/range').Range : ace.require('ace/range').Range;
-            inputArea.selection.setSelectionRange((function(posStart, posEnd) {
-                return new Range(posStart.row, posStart.column, posEnd.row, posEnd.column);
-            })(inputArea.session.doc.indexToPosition(stateObj.start), inputArea.session.doc.indexToPosition(stateObj.end)));
-            inputArea.renderer.scrollToY(stateObj.scrollTop);
+            inputArea.doc.setSelection(inputArea.doc.posFromIndex(stateObj.start),inputArea.doc.posFromIndex(stateObj.end),{scroll:true});
             inputArea.focus();
             
             /*benweet
@@ -917,11 +912,10 @@
                 endIndex++;
             }
             
-            var Range = typeof require !== 'undefined' ? require('ace/range').Range : ace.require('ace/range').Range;
-            var range = (function(posStart, posEnd) {
-                return new Range(posStart.row, posStart.column, posEnd.row, posEnd.column);
-            })(inputArea.session.doc.indexToPosition(startIndex), inputArea.session.doc.indexToPosition(stateObj.length - endIndex));
-            inputArea.session.replace(range, stateObj.text.substring(startIndex, afterMaxOffset - endIndex + 1));
+            inputArea.doc.replaceRange(stateObj.text.substring(startIndex, afterMaxOffset - endIndex + 1), {
+                from:inputArea.doc.posFromIndex(startIndex),
+                to:inputArea.doc.posFromIndex(stateObj.length - endIndex)
+            });
             this.setInputAreaSelection();
 
             /*benweet
@@ -1152,7 +1146,7 @@
             /*benweet
             setupEvents(panels.input, applyTimeout);
             */
-            panels.input.session.on('change', applyTimeout);
+            panels.input.on('change', applyTimeout);
             //Not necessary
             //makePreviewHtml();
 
@@ -1344,7 +1338,7 @@
 
             createDialog();
 
-            var defTextLen = defaultInputText.length;
+            /*var defTextLen = defaultInputText.length;
             if (input.selectionStart !== undefined) {
                 input.selectionStart = 0;
                 input.selectionEnd = defTextLen;
@@ -1355,7 +1349,7 @@
                 range.moveStart("character", -defTextLen);
                 range.moveEnd("character", defTextLen);
                 range.select();
-            }
+            }*/
 
             input.focus();
         }, 0);
@@ -1369,8 +1363,8 @@
 
         this.setUndoRedoButtonStates = function() {
             setTimeout(function() {
-                setupButton(buttons.undo, inputBox.session.getUndoManager().hasUndo());
-                setupButton(buttons.redo, inputBox.session.getUndoManager().hasRedo());
+                setupButton(buttons.undo, true);
+                setupButton(buttons.redo, true);
             }, 50);
         };
 
@@ -1386,16 +1380,16 @@
             if(identifierList.length === 0) {
                 return;
             }
-            var identifier = identifierList.pop();
-            inputBox.commands.addCommand({
-                name: getString(identifier),
-                bindKey: keyStrokes[identifier],
-                exec: function(editor) {
-                    doClick(buttons[identifier]);
-                },
-            });
-            addKeyCmd(identifierList);
-        }
+            var eKeys = {};
+            for(var i=identifierList.length-1; i>=0; i--)
+            {
+                var identifier = identifierList[i];
+                eKeys[keyStrokes[identifier]] = (function(bt){
+                    return function(editor) { doClick(bt); };
+                })(buttons[identifier]);
+            }
+            inputBox.setOption("extraKeys", eKeys);
+        };
         addKeyCmd(['bold', 'italic', 'link', 'quote', 'code', 'image', 'olist', 'ulist', 'heading', 'hr']);
         
         /*benweet
@@ -1674,10 +1668,10 @@
             buttons.hr = makeButton("wmd-hr-button", getStringAndKey("hr"), "-180px", bindCommand("doHorizontalRule"));
             makeSpacer(3);
             buttons.undo = makeButton("wmd-undo-button", getStringAndKey("undo"), "-200px", null);
-            buttons.undo.execute = function (manager) { inputBox.session.getUndoManager().undo(); };
+            buttons.undo.execute = function (manager) { inputBox.doc.undo(); };
 
             buttons.redo = makeButton("wmd-redo-button", getStringAndKey("redo"), "-220px", null);
-            buttons.redo.execute = function (manager) { inputBox.session.getUndoManager().redo(); };
+            buttons.redo.execute = function (manager) { inputBox.doc.redo(); };
 
             if (helpOptions) {
                 var helpButton = document.createElement("li");
@@ -1697,7 +1691,7 @@
             }
 
             that.setUndoRedoButtonStates();
-            inputBox.session.on('change', function() {
+            inputBox.on('change', function() {
                 that.setUndoRedoButtonStates();
             });
         }

@@ -3,14 +3,16 @@
 <html>
 
     <head>
+        <meta charset="UTF-8">
         <title>PageDown Demo Page</title>
         
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.13.2/codemirror.css">
         <link rel="stylesheet" type="text/css" href="demo.css" />
         
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.13.2/codemirror.js"></script>
         <script type="text/javascript" src="../../Markdown.Converter.js"></script>
         <script type="text/javascript" src="../../Markdown.Sanitizer.js"></script>
         <script type="text/javascript" src="../../Markdown.Editor.js"></script>
-        <script src="http://cdnjs.cloudflare.com/ajax/libs/ace/1.1.01/ace.js" type="text/javascript" charset="utf-8"></script>
     </head>
     
     <body>
@@ -77,9 +79,9 @@ selection), this editor creates an example text that's different from the first 
                 var editor1 = new Markdown.Editor(converter1);
                 
                 var text1 = document.getElementById('wmd-input').innerHTML;
-                var ace1 = ace.edit("wmd-input");
-                ace1.setValue(text1, -1);
-                editor1.run(ace1);
+                document.getElementById('wmd-input').innerHTML = '';
+                var cm1 = CodeMirror(document.getElementById("wmd-input"),{value:text1,lineNumbers:true});
+                editor1.run(cm1);
                 
                 var converter2 = new Markdown.Converter();
 
@@ -99,9 +101,9 @@ selection), this editor creates an example text that's different from the first 
                 var editor2 = new Markdown.Editor(converter2, "-second", options);
                 
                 var text2 = document.getElementById('wmd-input-second').innerHTML;
-                var ace2 = ace.edit("wmd-input-second");
-                ace2.setValue(text2, -1);
-                editor2.run(ace2);
+                document.getElementById('wmd-input-second').innerHTML = '';
+                var cm2 = CodeMirror(document.getElementById("wmd-input-second"),{value:text2,lineNumbers:true});
+                editor2.run(cm2);
             })();
         </script>
     </body>
