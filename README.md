@@ -16,7 +16,7 @@ Basically:
     </script>
 ```
 
-The [demo page][1] has been updated accordingly.
+The [demo page][1] has been updated accordingly (including demo MathJax support).
 
 
   [1]: https://github.com/foo123/pagedown-codemirror/blob/master/demo/browser/demo.html
